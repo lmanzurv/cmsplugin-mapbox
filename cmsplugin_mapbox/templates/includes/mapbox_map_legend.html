@@ -1,0 +1,98 @@
+{% load i18n sekizai_tags %}
+
+{% addtoblock "css" %}
+    <style>
+        .mapbox-show-legend {
+            display: none;
+        }
+
+        .mapbox-legend-items .mapbox-legend-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .mapbox-legend-items .mapbox-legend-list .mapbox-legend-tour {
+            list-style: none;
+            cursor: pointer;
+        }
+
+        .mapbox-legend-items .mapbox-legend-list .mapbox-legend-tour.show-all span {
+            background: #CCC;
+            border-color: #999;
+        }
+
+        .mapbox-legend-items .mapbox-legend-list .mapbox-legend-tour:hover,
+        .mapbox-legend-items .mapbox-legend-list .mapbox-legend-tour.selected {
+            font-weight: 700;
+        }
+
+        .mapbox-legend-items .mapbox-legend-list .mapbox-legend-tour.empty span {
+            background-color: #FFF !important;
+            border: 2px solid;
+        }
+
+        .mapbox-legend-items .mapbox-legend-list .mapbox-legend-tour span {
+            float: left;
+            height: 20px;
+            width: 20px;
+            margin-right: 5px;
+            border: 2px solid;
+        }
+
+        @media screen and (max-width: 768px) {
+            .mapbox-legend {
+                display: none;
+            }
+
+            .mapbox-show-legend {
+                display: block;
+            }
+        }
+    </style>
+{% endaddtoblock %}
+
+{% with instance.legend as legend %}
+    <button class="mapbox-show-legend {{ legend.button_classes }}">
+        <i class="fa fa-map-signs fa-2x" aria-hidden="true"></i>
+    </button>
+
+    <div class="mapbox-legend {{ legend.legend_classes }}">
+        <div class="mapbox-legend-title"><h1>{{ legend.title }}</h1></div>
+        <div class="mapbox-legend-items">
+            <ul class="mapbox-legend-list">
+                {% for tour in children %}
+                    {% if tour.plugin_type == 'MapBoxMapTourPlugin' %}
+                        <li class="mapbox-legend-tour" data-tour="{{tour.id}}" data-tour-name="{{ tour.name }}">
+                            <span style="background:{{tour.color}}; border-color:{{tour.color}}"></span> {{ tour.legend_text }}
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                {% if legend.show_all %}
+                    <li class="mapbox-legend-tour show-all selected" data-tour="{{ instance.id }}-show-all">
+                        <span></span> {% if legend.show_all_text %}{{ legend.show_all_text }}{% else %}{% trans 'Select all Tours' %}{% endif %}
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    <div class="mapbox-arrow-more" style="display: none;">
+        <p>{% if legend.scroll_more_text %}{{ legend.scroll_more_text }}{% else %}{% trans 'Scroll to see more' %}{% endif %}</p>
+        <i class="{% if legend.scroll_more_icon %}{{ legend.scroll_more_icon }}{% else %}fa fa-long-arrow-down{% endif %}"></i>
+    </div>
+{% endwith %}
+
+{% addtoblock "js" %}
+    <script type="text/javascript">
+        window.addEventListener('load', function() {
+            $('.mapbox-show-legend').click(function () {
+                var legend = $(this).siblings('.mapbox-legend');
+                if($(legend).is(':visible')) {
+                    $(legend).css('display', 'none');
+                } else {
+                    $(legend).css('display', 'block');
+                }
+            });
+        });
+    </script>
+{% endaddtoblock %}

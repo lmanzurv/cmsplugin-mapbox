@@ -1,0 +1,7 @@
+{% load cms_tags %}
+
+<div class="mapbox-tour-info {{ instance.tour_classes }}" id="mapbox-tour-{{ instance.id }}-info" style="display: none">
+    {% for plugin in instance.child_plugin_instances %}
+        {% render_plugin plugin %}
+    {% endfor %}
+</div>

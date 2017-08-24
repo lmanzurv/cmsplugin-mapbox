@@ -1,0 +1,151 @@
+{% load l10n cms_tags sekizai_tags staticfiles %}
+
+{% addtoblock "css" %}
+    <style>
+        .mapbox {
+            margin: 0 !important;
+        }
+
+        .mapbox ~ section, .mapbox ~ footer {
+            display: none;
+        }
+
+        .mapbox-interaction {
+            padding-top: 60px;
+            position: relative;
+            height: 100vh;
+        }
+
+        .mapbox-map {
+            min-height: 600px;
+            height: 100%;
+        }
+    </style>
+{% endaddtoblock %}
+
+{% addtoblock "uncompressed_css" %}
+    <link href='https://api.mapbox.com/mapbox-gl-js/v0.34.0/mapbox-gl.css' type='text/css' rel='stylesheet' />
+{% endaddtoblock %}
+
+{% addtoblock "uncompressed_css" %}
+    <link href='https://api.mapbox.com/mapbox.js/v2.4.0/mapbox.css' type='text/css' rel='stylesheet' />
+{% endaddtoblock %}
+
+{% with instance.child_plugin_instances as children %}
+    <div class="mapbox-container">
+        <div class="mapbox-interaction">
+            <div class="mapbox-map {{ instance.map_classes }}" id="mapbox-map-{{ instance.id }}">
+            </div>
+            {% include 'includes/mapbox_map_legend.html' %}
+        </div>
+        <div class="mapbox-tours">
+            {% for plugin in children %}
+                {% if plugin.plugin_type == 'MapBoxMapTourPlugin' %}
+                    {% render_plugin plugin %}
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% if request.toolbar.edit_mode %}
+            {% for plugin in children %}
+                {% if plugin.plugin_type == 'MapBoxMapPointPlugin' %}
+                    {% render_plugin plugin %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    {% addtoblock "uncompressed_js" %}
+        <script src='https://api.mapbox.com/mapbox-gl-js/v0.34.0/mapbox-gl.js'></script>
+    {% endaddtoblock %}
+
+    {% addtoblock "uncompressed_js" %}
+        <script src='https://api.mapbox.com/mapbox.js/v2.4.0/mapbox.js'></script>
+    {% endaddtoblock %}
+
+    {% addtoblock "uncompressed_js" %}
+        <script src='https://api.tiles.mapbox.com/mapbox.js/plugins/turf/v2.0.0/turf.min.js'></script>
+    {% endaddtoblock %}
+
+    {% addtoblock "js" %}
+        <script src="{% static 'mapbox/js/mapboxJSRender.js' %}"></script>
+    {% endaddtoblock %}
+
+    {% addtoblock "js" %}
+        <script src="{% static 'mapbox/js/mapboxGLRender.js' %}"></script>
+    {% endaddtoblock %}
+
+    {% addtoblock "js" %}
+        <script src="{% static 'mapbox/js/mapboxplugin.js' %}"></script>
+    {% endaddtoblock %}
+
+    {% localize off %}
+    {% addtoblock "js" %}
+        <script type="text/javascript">
+            $(document).ready(function() {
+                var $container = $('.mapbox-container');
+                $container.closest('section').addClass('mapbox');
+
+                var config = {
+                    'mapId': '{{ instance.id }}',
+                    'accessToken': '{{ instance.mapbox_access_token }}',
+                    'mapStyle': '{{ instance.mapbox_style }}',
+                    'initLatitude': {{ instance.latitude }},
+                    'initLongitude': {{ instance.longitude }},
+                    'legendResize': {{ instance.zoom_to_tours|yesno:'true,false' }},
+                    'scrollZoom': {{ instance.zoom_scroll|yesno:'true,false' }}
+                };
+
+                {% if instance.zoom %}
+                    config['initZoom'] = {{ instance.zoom }};
+                {% endif %}
+
+                var points = {};
+                var tours = {};
+
+                {% for point in children %}
+                    {% if point.plugin_type == 'MapBoxMapPointPlugin' %}
+                        points['{{ point.name }}'] = {
+                            'latitude': {{ point.latitude }},
+                            'longitude': {{ point.longitude }},
+                            'icon': '{{ point.icon_name }}',
+                            'icon_url': '{{ point.icon_url }}'
+                        };
+                    {% endif %}
+                {% endfor %}
+
+                {% for tour in children %}
+                    {% if tour.plugin_type == 'MapBoxMapTourPlugin' %}
+                        tours['{{ tour.name }}'] = {
+                            'tour_id': '{{ tour.id }}',
+                            'routes': [],
+                            'color': '{{ tour.color }}'
+                        };
+                        {% for route in tour.routes %}
+                            var rt = {
+                                'initPoint': '{{ route.initial_point.name }}',
+                                'finishPoint': '{{ route.finish_point.name }}',
+                                'angle': {{ route.angle }},
+                                'line_width': {{ route.line_width }}
+                            }
+                            tours['{{ tour.name }}']['routes'].push(rt);
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+
+                var selectedTour = null;
+                var results = new RegExp('[\?&]tour=([^&#]*)').exec(window.location.href);
+                if(results !== null) {
+                    selectedTour = results[1];
+                }
+
+                var mapboxPlugin = MapBoxPlugin('{{ current_language }}', config, points, tours, selectedTour);
+                mapboxPlugin.generateMap();
+                $(window).on('resize', function() {
+                    mapboxPlugin.updateMap();
+                });
+                $container.find('.mapbox-map').data('mapbox-map', mapboxPlugin.getMap());
+            });
+        </script>
+    {% endaddtoblock %}
+    {% endlocalize %}
+{% endwith %}
